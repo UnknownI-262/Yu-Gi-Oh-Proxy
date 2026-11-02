@@ -2,8 +2,8 @@
 
 A single-file web app that turns a Yu-Gi-Oh! deck list into a print-ready A4 PDF with dotted cut lines. Search a card, add it to the sheet, and download. No install, no build step, no backend.
 
-## Test it using the link belos
-- [the lin](https://unknowni-262.github.io/Yu-Gi-Oh-Proxy/)
+## Test it using the link below
+- [The Link Demo ](https://unknowni-262.github.io/Yu-Gi-Oh-Proxy/)
 
 ## Features
 

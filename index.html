@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yugioh Proxy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --desk: #e9eaee;
+    --panel: #fafafb;
+    --panel-2: #f0f1f4;
+    --line: #d5d8df;
+    --ink: #1b1f2a;
+    --ink-2: #5b6272;
+    --accent: #2f5bea;
+    --accent-ink: #ffffff;
+    --danger: #c4372f;
+    --paper: #ffffff;
+    --slot: #f3f4f7;
+    --cut: #7a8090;
+    --shadow: 0 1px 2px rgba(20,24,40,.08), 0 8px 24px rgba(20,24,40,.10);
+  }
+  [data-theme="dark"] {
+    --desk: #101216;
+    --panel: #1a1d24;
+    --panel-2: #232731;
+    --line: #2f3440;
+    --ink: #e8eaf0;
+    --ink-2: #99a0b0;
+    --accent: #7c9cff;
+    --accent-ink: #0d1020;
+    --danger: #ff7a70;
+    --paper: #f7f7f5;
+    --slot: #e6e7ea;
+    --cut: #6f7585;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--desk);
+    color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app { display: grid; grid-template-columns: 400px 1fr; height: 100%; }
+  .side {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .side-scroll { overflow-y: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 22px; }
+  .top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .top h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  .btn {
+    border: 1px solid var(--line); background: var(--panel-2);
+    border-radius: 8px; padding: 7px 12px;
+  }
+  .btn:hover { border-color: var(--ink-2); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .55; cursor: progress; }
+
+  h2 { font-size: 13px; margin: 0 0 8px; font-weight: 650; }
+  .search input {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel-2);
+  }
+  .search input::placeholder { color: var(--ink-2); }
+  .hint { color: var(--ink-2); font-size: 12.5px; margin: 6px 0 0; min-height: 18px; }
+
+  .results {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px; margin-top: 10px;
+  }
+  .result {
+    padding: 0; border: 1px solid transparent; background: none; border-radius: 4px; position: relative;
+  }
+  .result img { width: 100%; aspect-ratio: 59 / 86; object-fit: cover; border-radius: 3px; display: block; background: var(--slot); }
+  .result:hover { border-color: var(--accent); }
+  .result .plus {
+    position: absolute; right: 4px; bottom: 4px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); font-weight: 700; line-height: 20px; text-align: center;
+    opacity: 0; transition: opacity .12s;
+  }
+  .result:hover .plus, .result:focus-visible .plus { opacity: 1; }
+
+  .sheet-list { display: flex; flex-direction: column; gap: 4px; }
+  .row {
+    display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; align-items: center;
+    padding: 4px 6px 4px 4px; border-radius: 8px;
+  }
+  .row:hover { background: var(--panel-2); }
+  .row img { width: 28px; aspect-ratio: 59 / 86; object-fit: cover; border-radius: 2px; background: var(--slot); }
+  .meta { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .meta .name { max-width: 100%; }
+  .art-btn {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 6px;
+    padding: 1px 8px; font-size: 12px; color: var(--ink-2);
+  }
+  .art-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .result .alt {
+    position: absolute; left: 4px; top: 4px; padding: 0 6px; border-radius: 4px; font-size: 11px;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600;
+  }
+  .row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qty { display: flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+  .qty button, .rm {
+    width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel); line-height: 1; padding: 0;
+  }
+  .qty span { min-width: 22px; text-align: center; }
+  .rm { color: var(--danger); }
+  .empty { color: var(--ink-2); padding: 6px 2px; }
+
+  .settings { display: grid; gap: 12px; }
+  .field { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; }
+  .field output { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .field input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+  .check { display: flex; gap: 8px; align-items: center; }
+  .check input { accent-color: var(--accent); }
+
+  .foot { border-top: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 8px; }
+  .foot .meta { color: var(--ink-2); font-size: 12.5px; }
+  .error { color: var(--danger); font-size: 12.5px; min-height: 18px; }
+
+  .preview { overflow: auto; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  .page-wrap { width: min(100%, 640px); }
+  .page-label { color: var(--ink-2); font-size: 12.5px; margin: 0 0 6px 2px; }
+  .page {
+    position: relative; width: 100%; aspect-ratio: 210 / 297;
+    background: var(--paper); box-shadow: var(--shadow); border-radius: 2px; overflow: hidden;
+  }
+  .slot { position: absolute; background: var(--slot); }
+  .slot img { width: 100%; height: 100%; display: block; object-fit: fill; }
+  .cut { position: absolute; }
+  .cut.v { border-left: 1px dashed var(--cut); }
+  .cut.h { border-top: 1px dashed var(--cut); }
+
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    html, body { height: auto; }
+    .app { grid-template-columns: 1fr; height: auto; }
+    .side { border-right: 0; border-bottom: 1px solid var(--line); }
+    .side-scroll { overflow: visible; }
+    .preview { padding: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="top">
+      <h1>Yugioh Proxy Builder</h1>
+      <button class="btn" id="themeBtn" type="button" aria-label="Toggle dark mode">Dark mode</button>
+    </div>
+
+    <div class="side-scroll">
+      <section class="search">
+        <h2>Find cards</h2>
+        <input id="q" type="search" placeholder="Search Yu-Gi-Oh! cards, e.g. Dark Magician" autocomplete="off" aria-label="Search cards">
+        <p class="hint" id="searchHint">Type at least 2 characters.</p>
+        <div class="results" id="results"></div>
+      </section>
+
+      <section>
+        <h2>Sheet <span id="count" style="color:var(--ink-2);font-weight:400"></span></h2>
+        <div class="sheet-list" id="sheetList"></div>
+      </section>
+
+      <section>
+        <h2>Layout</h2>
+        <div class="settings">
+          <div class="field">
+            <label for="margin">Page margin</label><output id="marginOut"></output>
+            <input id="margin" type="range" min="0" max="20" step="1" value="10">
+          </div>
+          <div class="field">
+            <label for="gap">Gap between cards</label><output id="gapOut"></output>
+            <input id="gap" type="range" min="0" max="6" step="0.5" value="0">
+          </div>
+          <label class="check"><input id="cutLines" type="checkbox" checked> Dotted cut lines</label>
+        </div>
+      </section>
+    </div>
+
+    <div class="foot">
+      <div class="meta" id="summary"></div>
+      <div class="error" id="err" role="alert"></div>
+      <button class="btn primary" id="exportBtn" type="button">Download PDF</button>
+    </div>
+  </aside>
+
+  <main class="preview" id="preview" aria-label="A4 sheet preview"></main>
+</div>
+
+<script>
+/* ============================================================
+ * 1. CONFIG
+ * ============================================================ */
+const CONFIG = {
+  api: 'https://db.ygoprodeck.com/api/v7/cardinfo.php',
+  searchLimit: 24,
+  card: { w: 59, h: 86 },        // mm, standard TCG size (sleeve-friendly)
+  page: { w: 210, h: 297 },      // mm, A4 portrait
+  cutOvershoot: 3,               // mm that cut lines extend past the grid
+  // If the browser blocks image fetches (CORS), set a proxy, e.g. 'https://corsproxy.io/?'
+  // The image URL is appended URL-encoded. Better: host your own proxy/cache.
+  imageProxy: '',
+  // Tried in order when the direct image fetch is blocked (YGOPRODeck images send no CORS headers).
+  // Swap in your own proxy/cache for anything beyond personal use.
+  fallbackProxies: [
+    u => `https://images.weserv.nl/?url=${encodeURIComponent(u)}&output=jpg&q=95`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
+  ]
+};
+
+/* ============================================================
+ * 2. STATE
+ * ============================================================ */
+const state = {
+  sheet: [],                                   // [{ id, name, thumb, img, qty }]
+  settings: { margin: 10, gap: 0, cutLines: true }
+};
+
+/* ============================================================
+ * 3. DATA: YGOPRODeck
+ * ============================================================ */
+async function searchCards(query) {
+  const url = `${CONFIG.api}?fname=${encodeURIComponent(query)}&num=${CONFIG.searchLimit}&offset=0`;
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    if (!CONFIG.imageProxy) throw e;           // blocked by CORS/CSP/offline; retry via proxy if set
+    res = await fetch(CONFIG.imageProxy + encodeURIComponent(url));
+  }
+  if (res.status === 400) return [];           // API answers 400 when nothing matches
+  if (res.status === 429) throw new Error('Rate limited by YGOPRODeck. Wait a minute and retry.');
+  if (!res.ok) throw new Error(`Card search failed (${res.status})`);
+  const json = await res.json();
+  if (json.error) return [];
+  // card_images holds the default art plus any alternate arts; each art has its own id
+  return (json.data || []).flatMap(c => {
+    const arts = c.card_images.map(a => ({ id: a.id, thumb: a.image_url_small, img: a.image_url }));
+    return arts.map((a, i) => ({ ...a, name: c.name, arts, artIndex: i }));
+  });
+}
+
+/* Fetch an image as a data URL so jsPDF can embed it. Cached per URL. */
+const imageCache = new Map();
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('Could not read image'));
+    r.readAsDataURL(blob);
+  });
+}
+async function loadImageData(url) {
+  if (imageCache.has(url)) return imageCache.get(url);
+  const attempt = async (u) => {
+    const res = await fetch(u, { mode: 'cors' });
+    if (!res.ok) throw new Error(`Image request failed (${res.status})`);
+    return blobToDataURL(await res.blob());
+  };
+  const routes = [
+    url,
+    ...(CONFIG.imageProxy ? [CONFIG.imageProxy + encodeURIComponent(url)] : []),
+    ...CONFIG.fallbackProxies.map(f => f(url))
+  ];
+  let lastErr;
+  for (const r of routes) {
+    try {
+      const data = await attempt(r);
+      imageCache.set(url, data);
+      return data;
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error(`Could not load card image (${lastErr ? lastErr.message : 'unknown error'})`);
+}
+
+/* ============================================================
+ * 4. LAYOUT: pure functions, shared by preview and PDF
+ * ============================================================ */
+function computeLayout({ margin, gap }) {
+  const { w, h } = CONFIG.card;
+  const P = CONFIG.page;
+  const cols = Math.max(0, Math.floor((P.w - 2 * margin + gap) / (w + gap)));
+  const rows = Math.max(0, Math.floor((P.h - 2 * margin + gap) / (h + gap)));
+  const gridW = cols * w + Math.max(0, cols - 1) * gap;
+  const gridH = rows * h + Math.max(0, rows - 1) * gap;
+  const x0 = (P.w - gridW) / 2;               // grid is centered on the page
+  const y0 = (P.h - gridH) / 2;
+
+  const slots = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      slots.push({ x: x0 + c * (w + gap), y: y0 + r * (h + gap) });
+
+  // Cut lines: outer card edges, plus the middle of each gap between cards.
+  const edge = (i, n, start, size) =>
+    i === 0 ? start :
+    i === n ? start + n * size + (n - 1) * gap :
+    start + i * (size + gap) - gap / 2;
+  const vLines = Array.from({ length: cols + 1 }, (_, i) => edge(i, cols, x0, w));
+  const hLines = Array.from({ length: rows + 1 }, (_, i) => edge(i, rows, y0, h));
+
+  return { cols, rows, perPage: cols * rows, slots, vLines, hLines, x0, y0, gridW, gridH };
+}
+
+/* Expand quantities into a flat list, then split into pages. */
+function expandSheet(sheet) {
+  return sheet.flatMap(c => Array.from({ length: c.qty }, () => c));
+}
+function paginate(cards, perPage) {
+  if (perPage < 1) return [];
+  const pages = [];
+  for (let i = 0; i < cards.length; i += perPage) pages.push(cards.slice(i, i + perPage));
+  return pages.length ? pages : [[]];          // always show at least one blank sheet
+}
+
+/* ============================================================
+ * 5. PDF EXPORT
+ * ============================================================ */
+async function exportPDF(onProgress = () => {}) {
+  const L = computeLayout(state.settings);
+  const cards = expandSheet(state.sheet);
+  if (!cards.length) throw new Error('Add at least one card first.');
+  if (L.perPage < 1) throw new Error('Margins are too large for a card to fit.');
+
+  // Load each unique image once.
+  const unique = [...new Map(cards.map(c => [c.id, c])).values()];
+  const data = new Map();
+  for (let i = 0; i < unique.length; i++) {
+    onProgress(`Loading images ${i + 1}/${unique.length}`);
+    data.set(unique[i].id, await loadImageData(unique[i].img));
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const { w, h } = CONFIG.card;
+  const os = CONFIG.cutOvershoot;
+  const pages = paginate(cards, L.perPage);
+
+  pages.forEach((pageCards, p) => {
+    onProgress(`Building page ${p + 1}/${pages.length}`);
+    if (p > 0) doc.addPage('a4', 'portrait');
+
+    pageCards.forEach((card, i) => {
+      const { x, y } = L.slots[i];
+      const d = data.get(card.id);
+      const fmt = d.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      // alias lets jsPDF embed a duplicate card once and reuse it
+      doc.addImage(d, fmt, x, y, w, h, `card-${card.id}`, 'FAST');
+    });
+
+    if (state.settings.cutLines) {
+      doc.setDrawColor(110);
+      doc.setLineWidth(0.1);
+      doc.setLineDashPattern([0.8, 0.8], 0);
+      L.vLines.forEach(x => doc.line(x, L.y0 - os, x, L.y0 + L.gridH + os));
+      L.hLines.forEach(y => doc.line(L.x0 - os, y, L.x0 + L.gridW + os, y));
+      doc.setLineDashPattern([], 0);
+    }
+  });
+
+  doc.save('proxy-sheet.pdf');
+}
+
+/* ============================================================
+ * 6. UI
+ * ============================================================ */
+const $ = (id) => document.getElementById(id);
+const pct = (v, total) => `${(v / total * 100).toFixed(4)}%`;
+
+function addCard(card) {
+  const hit = state.sheet.find(c => c.id === card.id);
+  if (hit) hit.qty = Math.min(99, hit.qty + 1);
+  else state.sheet.push({ ...card, qty: 1 });
+  renderSheet(); renderPreview();
+}
+function setQty(id, delta) {
+  const c = state.sheet.find(c => c.id === id);
+  if (!c) return;
+  c.qty += delta;
+  if (c.qty < 1) state.sheet = state.sheet.filter(x => x.id !== id);
+  c.qty = Math.min(99, c.qty);
+  renderSheet(); renderPreview();
+}
+function cycleArt(id) {
+  const c = state.sheet.find(x => x.id === id);
+  if (!c || !c.arts || c.arts.length < 2) return;
+  const ni = (c.artIndex + 1) % c.arts.length;
+  const next = c.arts[ni];
+  const dupe = state.sheet.find(x => x !== c && x.id === next.id);
+  if (dupe) {                                   // that art is already on the sheet: merge counts
+    dupe.qty = Math.min(99, dupe.qty + c.qty);
+    state.sheet = state.sheet.filter(x => x !== c);
+  } else {
+    Object.assign(c, next, { artIndex: ni });
+  }
+  renderSheet(); renderPreview();
+}
+function removeCard(id) {
+  state.sheet = state.sheet.filter(c => c.id !== id);
+  renderSheet(); renderPreview();
+}
+
+function renderSheet() {
+  const list = $('sheetList');
+  list.textContent = '';
+  if (!state.sheet.length) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'No cards yet. Search above and click a card to add it.';
+    list.appendChild(p);
+  }
+  state.sheet.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <img alt="" loading="lazy">
+      <div class="meta">
+        <span class="name"></span>
+        <button type="button" class="art-btn" data-a="art" hidden></button>
+      </div>
+      <span class="qty">
+        <button type="button" data-a="dec" aria-label="Remove one copy">−</button>
+        <span></span>
+        <button type="button" data-a="inc" aria-label="Add one copy">+</button>
+      </span>
+      <button type="button" class="rm" data-a="rm" aria-label="Remove card">×</button>`;
+    row.querySelector('img').src = c.thumb;
+    row.querySelector('.name').textContent = c.name;
+    row.querySelector('.name').title = c.name;
+    row.querySelector('.qty span').textContent = c.qty;
+    const artBtn = row.querySelector('.art-btn');
+    if (c.arts && c.arts.length > 1) {
+      artBtn.hidden = false;
+      artBtn.textContent = `Art ${c.artIndex + 1} of ${c.arts.length}`;
+      artBtn.setAttribute('aria-label', `Switch artwork for ${c.name}`);
+    }
+    row.addEventListener('click', (e) => {
+      const a = e.target.closest('button')?.dataset.a;
+      if (a === 'inc') setQty(c.id, 1);
+      if (a === 'dec') setQty(c.id, -1);
+      if (a === 'rm') removeCard(c.id);
+      if (a === 'art') cycleArt(c.id);
+    });
+    list.appendChild(row);
+  });
+
+  const total = expandSheet(state.sheet).length;
+  $('count').textContent = total ? `(${total} cards)` : '';
+}
+
+function renderPreview() {
+  const L = computeLayout(state.settings);
+  const P = CONFIG.page, { w, h } = CONFIG.card, os = CONFIG.cutOvershoot;
+  const cards = expandSheet(state.sheet);
+  const pages = paginate(cards, L.perPage);
+  const root = $('preview');
+  root.textContent = '';
+
+  const summary = L.perPage
+    ? `${L.cols} × ${L.rows} per page, ${L.perPage} cards. ${pages.length} page${pages.length === 1 ? '' : 's'}.`
+    : 'Margins are too large for a card to fit.';
+  $('summary').textContent = summary;
+
+  pages.forEach((pageCards, p) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'page-wrap';
+    const label = document.createElement('p');
+    label.className = 'page-label';
+    label.textContent = `Page ${p + 1} of ${pages.length}`;
+    const page = document.createElement('div');
+    page.className = 'page';
+
+    L.slots.forEach((s, i) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      Object.assign(slot.style, {
+        left: pct(s.x, P.w), top: pct(s.y, P.h), width: pct(w, P.w), height: pct(h, P.h)
+      });
+      const card = pageCards[i];
+      if (card) {
+        const img = document.createElement('img');
+        img.src = card.img; img.alt = card.name; img.loading = 'lazy';
+        slot.appendChild(img);
+      }
+      page.appendChild(slot);
+    });
+
+    if (state.settings.cutLines && L.perPage) {
+      L.vLines.forEach(x => {
+        const d = document.createElement('div');
+        d.className = 'cut v';
+        Object.assign(d.style, { left: pct(x, P.w), top: pct(L.y0 - os, P.h), height: pct(L.gridH + 2 * os, P.h) });
+        page.appendChild(d);
+      });
+      L.hLines.forEach(y => {
+        const d = document.createElement('div');
+        d.className = 'cut h';
+        Object.assign(d.style, { top: pct(y, P.h), left: pct(L.x0 - os, P.w), width: pct(L.gridW + 2 * os, P.w) });
+        page.appendChild(d);
+      });
+    }
+
+    wrap.append(label, page);
+    root.appendChild(wrap);
+  });
+}
+
+/* ---- search ---- */
+let searchTimer, searchSeq = 0;
+function runSearch() {
+  const q = $('q').value.trim();
+  const hint = $('searchHint'), box = $('results');
+  clearTimeout(searchTimer);
+  const seq = ++searchSeq;                     // ignore stale responses (no AbortSignal: sandboxed previews can't clone it)
+  if (q.length < 2) { box.textContent = ''; hint.textContent = 'Type at least 2 characters.'; return; }
+  hint.textContent = 'Searching…';
+  searchTimer = setTimeout(async () => {
+    try {
+      const cards = await searchCards(q);
+      if (seq !== searchSeq) return;
+      box.textContent = '';
+      hint.textContent = cards.length ? `${cards.length} result${cards.length === 1 ? '' : 's'}. Alt arts are tagged. Click one to add it.` : `No cards match “${q}”.`;
+      cards.forEach(c => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'result'; b.title = c.name;
+        b.setAttribute('aria-label', `Add ${c.name}`);
+        b.innerHTML = '<img alt="" loading="lazy"><span class="plus">+</span>';
+        b.querySelector('img').src = c.thumb;
+        if (c.artIndex > 0) {
+          b.title = `${c.name} (alt art ${c.artIndex + 1})`;
+          b.setAttribute('aria-label', `Add ${c.name}, alt art ${c.artIndex + 1}`);
+          const tag = document.createElement('span');
+          tag.className = 'alt'; tag.textContent = `Alt ${c.artIndex + 1}`;
+          b.appendChild(tag);
+        }
+        b.addEventListener('click', () => addCard(c));
+        box.appendChild(b);
+      });
+    } catch (e) {
+      if (seq === searchSeq) {
+        console.error(e);
+        hint.textContent = `Search failed: ${e.message}. If this page is inside a preview or sandbox, open the file directly in Chrome or Firefox. Otherwise set CONFIG.imageProxy.`;
+      }
+    }
+  }, 300);
+}
+$('q').addEventListener('input', runSearch);
+
+/* ---- settings ---- */
+function syncSettings() {
+  state.settings.margin = +$('margin').value;
+  state.settings.gap = +$('gap').value;
+  state.settings.cutLines = $('cutLines').checked;
+  $('marginOut').textContent = `${state.settings.margin} mm`;
+  $('gapOut').textContent = `${state.settings.gap} mm`;
+  renderPreview();
+}
+['margin', 'gap', 'cutLines'].forEach(id => $(id).addEventListener('input', syncSettings));
+
+/* ---- theme ---- */
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+}
+$('themeBtn').addEventListener('click', () =>
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+/* ---- export ---- */
+$('exportBtn').addEventListener('click', async () => {
+  const btn = $('exportBtn'), err = $('err');
+  err.textContent = '';
+  btn.disabled = true;
+  const label = btn.textContent;
+  try {
+    await exportPDF(msg => { btn.textContent = msg; });
+  } catch (e) {
+    err.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+/* ---- init ---- */
+renderSheet();
+syncSettings();
+</script>
+</body>
+</html>

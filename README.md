@@ -2,7 +2,8 @@
 
 A single-file web app that turns a Yu-Gi-Oh! deck list into a print-ready A4 PDF with dotted cut lines. Search a card, add it to the sheet, and download. No install, no build step, no backend.
 
-<!-- Add a screenshot here: ![Proxy Sheet](screenshot.png) -->
+## Test it using the link belos
+- [the lin](https://unknowni-262.github.io/Yu-Gi-Oh-Proxy/)
 
 ## Features
 
@@ -63,6 +64,3 @@ If you want to avoid that, set your own proxy in `CONFIG.imageProxy`, or downloa
 
 This is an unofficial fan tool for **casual playtesting and proxy decks**. It is not affiliated with or endorsed by Konami or YGOPRODeck. Yu-Gi-Oh! is a trademark of Konami Digital Entertainment. Card images and data come from the YGOPRODeck API and belong to their respective owners. Please don't use proxies in sanctioned tournaments or to sell counterfeit cards.
 
-## License
-
-MIT, see `LICENSE`.
